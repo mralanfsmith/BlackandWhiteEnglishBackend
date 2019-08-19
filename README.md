@@ -1,5 +1,5 @@
-# WordOfMouthBackend
-Word of Mouth Backend
+# BlackAndWhiteEnglishBackend
+Black And White English Backend
 
 SETUP INSTRUCTIONS
 1. Clone project

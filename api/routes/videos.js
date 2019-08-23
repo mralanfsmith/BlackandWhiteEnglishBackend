@@ -13,8 +13,8 @@ const database = require("../../database");
 const spacesEndpoint = new aws.Endpoint('sfo2.digitaloceanspaces.com');
 const s3 = new aws.S3({
     endpoint: spacesEndpoint,
-    accessKeyId: 'RTDE7OTZHS7QBDJVDC54',
-    secretAccessKey: 'PdhyHIxCYzddrFQKdkVoXAD4OiPcq2I/2NVIa1Tr4AE'
+    accessKeyId: process.env.AWS_ACCESS_KEY || 'RTDE7OTZHS7QBDJVDC54',
+    secretAccessKey: process.env.AWS_SECRET_KEY ||  'PdhyHIxCYzddrFQKdkVoXAD4OiPcq2I/2NVIa1Tr4AE'
 });
 
 // Change bucket property to your Space name

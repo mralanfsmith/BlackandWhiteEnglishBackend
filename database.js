@@ -3,10 +3,10 @@ const knex = require("knex");
 const database = knex({
   client: "pg", // pg is the database library for postgreSQL on knexjs
   connection: {
-    host: "127.0.0.1", // Your local host IP
-    user: "wom", // Your postgres user name
-    password: "2018", // Your postrgres user password
-    database: "womdata" // Your database name
+    host: process.env.DB_HOST || "127.0.0.1", // Your local host IP
+    user: process.env.DB_USER || "wom", // Your postgres user name
+    password: process.env.DB_PASSWORD || "2018", // Your postrgres user password
+    database: process.env.DB_NAME || "womdata" // Your database name
   }
 });
 

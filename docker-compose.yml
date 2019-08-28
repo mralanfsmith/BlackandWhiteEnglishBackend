@@ -12,8 +12,8 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_USER=${DB_USER}
       - DB_HOST=${DB_HOST}
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
-      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - AWS_ACCESS_KEY=${S3_ACCESS_KEY}
+      - AWS_SECRET_KEY=${S3_SECRET_KEY}
       - S3_BUCKET_BLACKANDWHITE=${S3_BUCKET_BLACKANDWHITE}
       - AWS_REGION=${AWS_REGION}
     command: forever server.js

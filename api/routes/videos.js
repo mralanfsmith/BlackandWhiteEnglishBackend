@@ -9,19 +9,32 @@ const multerS3 = require('multer-s3');
 const videosRouter = express.Router();
 const database = require("../../database");
 
+// AWS configuration
+AWS.config.update({
+    accessKeyId: process.env.AWS_ACCESS_KEY || '',
+    secretAccessKey: process.env.AWS_SECRET_KEY || '',
+    region: process.env.AWS_REGION || ''
+});
+
 // Set S3 endpoint to DigitalOcean Spaces
+/*
 const spacesEndpoint = new aws.Endpoint('sfo2.digitaloceanspaces.com');
 const s3 = new aws.S3({
     endpoint: spacesEndpoint,
     accessKeyId: process.env.AWS_ACCESS_KEY || 'RTDE7OTZHS7QBDJVDC54',
     secretAccessKey: process.env.AWS_SECRET_KEY ||  'PdhyHIxCYzddrFQKdkVoXAD4OiPcq2I/2NVIa1Tr4AE'
 });
+*/
+
+// Set S3 endpoint to AWS
+const s3 = new aws.S3();
+let s3Bucket = process.env.S3_BUCKET_BLACKANDWHITE || 'womcdn';
 
 // Change bucket property to your Space name
 const upload = multer({
   storage: multerS3({
     s3: s3,
-    bucket: 'womcdn',
+    bucket: s3Bucket,
     acl: 'public-read',
     key: function (request, file, cb) {
       console.log(file);

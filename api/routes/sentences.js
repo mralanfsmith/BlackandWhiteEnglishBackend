@@ -34,12 +34,16 @@ sentencesRouter.get("/", (req, res, next) => {
   if (page < 1 || !page) page = 1;
   const offset = (page - 1) * limit;
   const lang = req.query.lang;
+  const difficulty = req.query.difficulty;
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','audios.username','audios.licence','audios.attribution')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.username','audios.licence','audios.attribution')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
-    .where('sentences.lang', lang)
+    .where({
+      'sentences.lang': lang,
+      'sentences.difficulty':  difficulty
+    })
     .limit(limit)
     .offset(offset)
     .orderBy('sentences.id')

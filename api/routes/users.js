@@ -5,6 +5,8 @@ const database = require("../../database"); //Require database
 const moment = require('moment');
 const Helper = require('../../controllers/Helper');
 const uuidv4 = require('uuid/v4');
+const jwt = require('jsonwebtoken');
+const secret = '12345678910';
 
 //Register User
 usersRouter.post("/create", (req, res) => {
@@ -139,6 +141,119 @@ usersRouter.post("/delete", (req, res) => {
         data:err,
         message:'Account deletion failed.'});
   });
+});
+
+//Profile
+usersRouter.get("/profile", (req, res) => {
+  if (!req.headers.authorization) {
+    return res.status(403).json({ error: 'No credentials sent!' });
+  }
+  var verifiedJwt = jwt.verify(req.headers.authorization,secret);
+  if(verifiedJwt.userId){
+    database('users')
+    .where('userid', verifiedJwt.userId)
+    .first()
+    .then(function (data) {
+      if (data === null || data === '' || data === 0) {
+        return res.status(200)
+          .json({
+              status: 'Failure',
+              message: 'User not found'
+          });
+      }
+      else {
+        return res.status(200)
+          .json({
+            status: 'Success',
+            data
+        });
+      }
+    })
+    .catch(function (err) {
+      res.status(400)
+        .json({
+          status: 'failure',
+          data:err,
+          message:'Fialed to get user profile.'});
+    });
+  }
+});
+
+//Profile update
+usersRouter.put("/profile", (req, res) => {
+  let updateData = {};
+  if (!req.headers.authorization) {
+    return res.status(403).json({ error: 'No credentials sent!' });
+  }
+
+  var verifiedJwt = jwt.verify(req.headers.authorization,secret);
+  database('users')
+  .where('userid', verifiedJwt.userId)
+  .first()
+    .then(function (data) {
+        if (data.email === null || data.email === '') {
+            res.status(400)
+            .json({
+                status: 'Failure',
+                message: 'User not found'
+            });
+        }
+        
+        if (req.body.oldPassword && !Helper.comparePassword(data.userpassword, req.body.oldPassword)) {
+          res.status(400)
+          .json({
+              status: 'Failure',
+              message: 'Old password does not match'
+          });
+        }
+    
+        if(req.body.userpassword){
+          if (!req.body.oldPassword) {
+              res.status(400)
+              .json({
+                  status: 'Failure',
+                  message: 'password not found'
+              });
+          }
+          const hashPassword = Helper.hashPassword(req.body.userpassword);
+          updateData.userpassword = hashPassword;
+        }
+        if(req.body.email)
+        updateData.email = req.body.email;
+
+        if(verifiedJwt.userId){
+          database('users')
+          .where('userid', verifiedJwt.userId)
+          .update(updateData)
+          .then(function (data) {
+            if (data === null || data === '' || data === 0) {
+              return res.status(200)
+                .json({
+                    status: 'Failure',
+                    message: 'Update fail'
+                });
+            }
+            else {
+              return res.status(200)
+                .json({
+                  status: 'Success',
+                  data
+              });
+            }
+          })
+          .catch(function (err) {
+            res.status(400)
+              .json({
+                status: 'failure',
+                data:err,
+                message:'Fialed to update user profile.'});
+          });
+        }
+
+      });
+ 
+  
+
 });
 
 // Exports the router object

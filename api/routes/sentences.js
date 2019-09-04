@@ -40,10 +40,8 @@ sentencesRouter.get("/", (req, res, next) => {
     .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.username','audios.licence','audios.attribution')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
-    .where({
-      'sentences.lang': lang,
-      'sentences.difficulty':  difficulty
-    })
+    .where({'sentences.lang': lang})
+    .whereIn('sentences.difficulty', JSON.parse(difficulty))
     .limit(limit)
     .offset(offset)
     .orderBy('sentences.id')

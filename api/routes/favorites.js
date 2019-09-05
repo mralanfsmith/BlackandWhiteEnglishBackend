@@ -108,7 +108,7 @@ favoritesRouter.get("/list",  middleware.checkToken, (req, res) => {
     var verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
     console.log(verifiedJwt);
     return database('favorites')
-    .select(['favorites.created as created', 'userid', 'sentenceid', 'text'])
+    .select(['favorites.created as created', 'userid', 'sentenceid', 'text', 'viewed'])
     .where('userid', verifiedJwt.userId)
     .innerJoin('sentences','favorites.sentenceid','sentences.id')
     .then(function (data) {

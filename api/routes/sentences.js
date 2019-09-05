@@ -63,6 +63,33 @@ sentencesRouter.get("/", (req, res, next) => {
     });
 });
 
+// Get Sentence by id
+sentencesRouter.get("/:id", (req, res, next) => {
+  let sentenceId = req.params.id;
+
+  database
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.username','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
+    .from('sentences')
+    .innerJoin('audios','sentences.id','audios.sentenceid')
+    .leftJoin('favorites','sentences.id','favorites.sentenceid')
+    .where('sentences.id', sentenceId)
+    .then(function (data) {
+      res.status(200)
+        .json({
+          status: 'success',
+          data: data,
+          message: 'Retrieved sentence'
+        });
+    })
+    .catch(function (err) {
+      res.status(400)
+        .json({
+          status: 'Failure',
+          data:err,
+          message:'Error occurring'});
+    });
+});
+
 // Get Translations for each sentence
  sentencesRouter.get("/translations/:id", (req, res, next) => { 
   let translationsId = req.params.id;

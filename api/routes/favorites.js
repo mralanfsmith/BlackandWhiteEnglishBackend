@@ -60,6 +60,49 @@ favoritesRouter.post("/add", middleware.checkToken, (req, res) => {
     
  });
 
+ // Remove a sentence from favorites
+ favoritesRouter.delete("/remove", middleware.checkToken, (req, res) => {
+    const deleteData = {};
+    var verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
+    if(req.body.sentenceid){
+        deleteData.sentenceid = req.body.sentenceid;
+    }else{
+        res.status(400)
+            .json({
+                status: 'failure',
+                message:'sentenceid required.'});
+    }
+    console.log(deleteData.sentenceid);
+    database('favorites')
+    .where('userid', verifiedJwt.userId)
+    .andWhere('sentenceid', deleteData.sentenceid)
+    .del()
+    .then(function (data) {
+        if (data === null || data === '' || data === 0) {
+                return res.status(200)
+                  .json({
+                      status: 'failure',
+                      message: 'Data does not exists'
+                  });
+              }
+              else {
+                return res.status(200)
+                  .json({
+                    status: 'success',
+                    data
+                });
+              }
+            })
+            .catch(function (err) {
+              res.status(500)
+                .json({
+                  status: 'failure',
+                  data:err,
+                  message:'Internal Server Error !'});
+            });
+    
+ });
+
 // Retrieve list of favorite sentences for user
 favoritesRouter.get("/list",  middleware.checkToken, (req, res) => {
     var verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);

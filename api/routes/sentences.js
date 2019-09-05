@@ -30,18 +30,19 @@ sentencesRouter.get("/count/", (req, res, next) => {
 // Get Sentences for specific language
 sentencesRouter.get("/", (req, res, next) => { 
   const limit = 1;
-  const page = req.query.pg;
+  let page = req.query.pg;
   if (page < 1 || !page) page = 1;
   const offset = (page - 1) * limit;
   const lang = req.query.lang;
-  const difficulty = req.query.difficulty;
+  const difficulty = req.query.difficulty ? JSON.parse(req.query.difficulty) : [1,2,3,4,5];
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.username','audios.licence','audios.attribution')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.username','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
+    .leftJoin('favorites','sentences.id','favorites.sentenceid')
     .where({'sentences.lang': lang})
-    .whereIn('sentences.difficulty', JSON.parse(difficulty))
+    .whereIn('sentences.difficulty', difficulty)
     .limit(limit)
     .offset(offset)
     .orderBy('sentences.id')

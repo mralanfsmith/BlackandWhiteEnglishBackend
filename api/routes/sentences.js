@@ -90,6 +90,72 @@ sentencesRouter.get("/:id", (req, res, next) => {
     });
 });
 
+// Add translation to sentence
+favoritesRouter.post("/translations", middleware.checkToken, (req, res) => {
+  const sentenceData = {};
+  let linksDataLang1 = {};
+  let linksDataLang2 = {};
+  // var verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
+  if(req.body.sentenceId){
+    linksDataLang1.sentenceid = req.body.sentenceId;
+    linksDataLang2.translationid = req.body.sentenceId;
+  }else{
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'sentenceid required.'});
+  }
+
+  if(req.body.translatedLang){
+    sentenceData.lang = req.body.translatedLang;
+  }else{
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'translated Language required.'});
+  }
+
+  if(req.body.translationText){
+    sentenceData.text = req.body.translationText;
+  }else{
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'translation Text required.'});
+  }
+
+  sentenceData.difficulty = getSentenceDifficulty(sentenceData.text);
+
+  var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+  var time = (new Date(Date.now() - tzoffset)).toISOString().slice(0, -1);
+  sentenceData.created = time.replace("T", " ");
+  // sentenceData.modified =  sentenceData.created;
+
+  database('sentences')
+  .insert(sentenceData)
+  .then(function (data) {
+    linksDataLang1.translationid = data.sentenceid;
+    linksDataLang2.sentenceid = data.sentenceid;
+    return database('links')
+      .insert([linksDataLang1, linksDataLang2])
+      .then(function (data) {
+          res.status(200)
+      .json({
+          status: 'success',
+          message: 'Translation added successfully.'
+          });
+      })
+      .catch(function (err) {
+          res.status(400)
+          .json({
+              status: 'failure',
+              data:err,
+              message: 'Add translation error!.'});
+      });
+  });
+  
+});
+
 // Get Translations for each sentence
  sentencesRouter.get("/translations/:id", (req, res, next) => { 
   let translationsId = req.params.id;
@@ -122,7 +188,24 @@ database
           data:err,
           message:'Error occurring'});
     });
-}); 
+});
+
+function getSentenceDifficulty(sentence) {
+  let difficulty = 1;
+  const numOfWords = sentence.split(' ').length;
+  if(numOfWords <= 3) {
+    difficulty = 1;
+  } else if(numOfWords > 3 && numOfWords <= 6) {
+    difficulty = 2;
+  } else if(numOfWords > 6 && numOfWords <= 9) {
+    difficulty = 3;
+  } else if(numOfWords > 9 && numOfWords <= 12) {
+    difficulty = 4;
+  } else if(numOfWords > 12) {
+    difficulty = 5;
+  }
+  return difficulty
+}
 
 // Exports the router object
 module.exports = sentencesRouter;

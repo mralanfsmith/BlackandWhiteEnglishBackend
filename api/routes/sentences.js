@@ -181,7 +181,7 @@ sentencesRouter.post("/add-card", (req, res) => {
             });
       }
     }).catch(function (err) {
-      res.status(500)
+      return res.status(500)
       .json({
           status: 'Failure',
           data:err,
@@ -189,7 +189,7 @@ sentencesRouter.post("/add-card", (req, res) => {
     });
   })
   .catch(function (err) {
-    res.status(500)
+    return res.status(500)
       .json({
         status: 'Failure',
         data:err,
@@ -199,6 +199,20 @@ sentencesRouter.post("/add-card", (req, res) => {
 
 // Add translation to sentence
 sentencesRouter.post("/add-translation", (req, res) => {
+  if(!req.body.translatedText){
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'Translated text required.'});
+  }
+
+  if(!req.body.translatedLang) {
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'Translated language required.'});
+  }
+
   return database('sentences').max('sentences.id')
   .then(function (data) {
     let id = MAX_TATOEBA_RECORDS + 1 
@@ -242,7 +256,7 @@ sentencesRouter.post("/add-translation", (req, res) => {
                 message: 'Add translation error!33.'});
         });
     }).catch(function (err) {
-      res.status(500)
+      return res.status(500)
       .json({
           status: 'failure',
           data:err,

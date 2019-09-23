@@ -5,9 +5,6 @@ const express = require("express");
 // Include express router middleware
 const sentencesRouter = express.Router();
 const database = require("../../database");
-const middleware = require("../auth/jwt-check");
-
-const upload = require('../service/file-upload')
 
 const MAX_TATOEBA_RECORDS = 8045483;
 

@@ -42,7 +42,7 @@ sentencesRouter.get("/", (req, res, next) => {
   const difficulty = req.query.difficulty ? JSON.parse(req.query.difficulty) : [1,2,3,4,5];
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')
@@ -73,7 +73,7 @@ sentencesRouter.get("/:id", (req, res, next) => {
   let sentenceId = req.params.id;
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')
@@ -178,6 +178,7 @@ sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
     sentenceData.created = getCurrentTime();
     sentenceData.modified =  sentenceData.created;
     sentenceData.status = 'pending'
+    sentenceData.usercreated = true;
     const sentenceInserted = await database('sentences').insert(sentenceData)
     if(sentenceInserted) {
       try {
@@ -283,6 +284,8 @@ async function updateCard (req , sentenceId, userId) {
       transSentenceData.difficulty = getSentenceDifficulty(transSentenceData.text);
       transSentenceData.created = getCurrentTime();
       transSentenceData.modified =  transSentenceData.created;
+      transSentenceData.usercreated = true;
+      transSentenceData.status = 'pending'
       const transalted = await database('sentences').insert(transSentenceData)
       if(transalted) {
         await createLinks(sentenceId, id);

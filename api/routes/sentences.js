@@ -9,8 +9,6 @@ const middleware = require("../auth/jwt-check");
 const jwt = require('jsonwebtoken');
 const configData = require("../config/auth-constants");
 
-const MAX_TATOEBA_RECORDS = 8045483;
-
 // Get Sentence Count
 sentencesRouter.get("/count/", (req, res, next) => { 
   const lang = req.query.lang;
@@ -104,7 +102,7 @@ sentencesRouter.get("/:id", (req, res, next) => {
   if (translation1 == null || !translation1) translation1 = 'none';
   let translation2 = req.query.translation2;
   if (translation2 == null || !translation2) translation2 = 'none';
-
+  
 database
   .select('sentences.id', 'sentences.lang', 'sentences.text', 'links.translationid')
   .from('sentences')
@@ -168,30 +166,22 @@ sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
   sentenceData.text = req.body.langText;
   sentenceData.lang = req.body.lang;
   try {
-    const count = await database('sentences').max('sentences.id');
-    let id = MAX_TATOEBA_RECORDS + 1 
-    if(count[0].max > MAX_TATOEBA_RECORDS) {
-      id = count[0].max + 1;
-    }
-    sentenceData.id = id;
     sentenceData.difficulty = getSentenceDifficulty(sentenceData.text);
     sentenceData.created = getCurrentTime();
     sentenceData.modified =  sentenceData.created;
     sentenceData.status = 'pending'
     sentenceData.usercreated = true;
-    const sentenceInserted = await database('sentences').insert(sentenceData)
-    if(sentenceInserted) {
-      try {
-        await updateCard(req, id, verifiedJwt.userId);
-      } catch(err) {
-        await database('sentences').where('sentenceid', id).del()
-        return res.status(500)
-        .json({
-          status: 'Failure',
-          data:err,
-          message:'Error occurred while updating card'});
-      }
-    } 
+    const newSentenceId = await database('sentences').insert(sentenceData).returning("id")
+    try {
+      await updateCard(req, newSentenceId[0], verifiedJwt.userId);
+    } catch(err) {
+      await database('sentences').where('sentenceid', id).del()
+      return res.status(500)
+      .json({
+        status: 'Failure',
+        data:err,
+        message:'Error occurred while updating card'});
+    }
     res.status(200)
         .json({
             status: 'success',
@@ -269,28 +259,19 @@ function getCurrentTime() {
 }
 
 async function updateCard (req , sentenceId, userId) {
-  let id = sentenceId;
+  let transalationId = sentenceId;
   if(req.body.translatedText && req.body.translatedLang) {
-    const count = await database('sentences').max('sentences.id');
-    if(count != null) {
-      id = MAX_TATOEBA_RECORDS + 1 
-      if(count[0].max > MAX_TATOEBA_RECORDS) {
-        id = count[0].max + 1;
-      }
-      const transSentenceData = {};
-      transSentenceData.id = id;
-      transSentenceData.lang = req.body.translatedLang
-      transSentenceData.text = req.body.translatedText
-      transSentenceData.difficulty = getSentenceDifficulty(transSentenceData.text);
-      transSentenceData.created = getCurrentTime();
-      transSentenceData.modified =  transSentenceData.created;
-      transSentenceData.usercreated = true;
-      transSentenceData.status = 'pending'
-      const transalted = await database('sentences').insert(transSentenceData)
-      if(transalted) {
-        await createLinks(sentenceId, id);
-      }
-    }
+    const transSentenceData = {};
+    transSentenceData.lang = req.body.translatedLang
+    transSentenceData.text = req.body.translatedText
+    transSentenceData.difficulty = getSentenceDifficulty(transSentenceData.text);
+    transSentenceData.created = getCurrentTime();
+    transSentenceData.modified =  transSentenceData.created;
+    transSentenceData.usercreated = true;
+    transSentenceData.status = 'pending'
+    const newId = await database('sentences').insert(transSentenceData).returning("id")
+    transalationId = newId[0]
+    await createLinks(sentenceId, transalationId);
   }
   if(req.body.audioURL) {
     const audio = {
@@ -310,7 +291,7 @@ async function updateCard (req , sentenceId, userId) {
   }
   if(req.body.transalatedAudioURL) {
     const audio = {
-      sentenceid: id,
+      sentenceid: transalationId,
       userid: userId,
       audiourl: req.body.transalatedAudioURL
     }
@@ -318,7 +299,7 @@ async function updateCard (req , sentenceId, userId) {
   }
   if(req.body.transalatedVedioURL) {
     const video = {
-      sentenceid: id,
+      sentenceid: transalationId,
       userid: userId,
       videourl: req.body.transalatedVedioURL
     }
@@ -336,7 +317,6 @@ async function createLinks(sourceId, targetId) {
     translationid: sourceId
   }
   await database('links').insert([linksSourceLang, linksTransaltionLang])
-
 }
 
 // Exports the router object

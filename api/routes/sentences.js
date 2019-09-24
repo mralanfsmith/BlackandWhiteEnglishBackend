@@ -92,176 +92,6 @@ sentencesRouter.get("/:id", (req, res, next) => {
     });
 });
 
-// Add cart detail that contains new sentence and
-sentencesRouter.post("/add-card", (req, res) => {
-  const sentenceData = {};
-  
-  if(req.body.langText){
-    sentenceData.text = req.body.langText;
-  } else {
-    res.status(400)
-        .json({
-            status: 'failure',
-            message:'Sentence text required.'});
-  }
-
-  if(req.body.lang) {
-    sentenceData.lang = req.body.lang;
-  } else {
-    res.status(400)
-        .json({
-            status: 'failure',
-            message:'Sentence tanguage required.'});
-  }
-
-  return database('sentences').max('sentences.id')
-  .then(function (data) {
-    let id = MAX_TATOEBA_RECORDS + 1 
-    if(data[0].max > MAX_TATOEBA_RECORDS) {
-      id = data[0].max + 1;
-    }
-    sentenceData.id = id;
-    sentenceData.difficulty = getSentenceDifficulty(sentenceData.text);
-    sentenceData.created = getCurrentTime();
-    sentenceData.modified =  sentenceData.created;
-
-    return database('sentences')
-    .insert(sentenceData)
-    .then(function (data) {
-      if(req.body.translatedText && req.body.translatedLang) {
-        const transSentenceData = {};
-        transSentenceData.id = id + 1;
-        transSentenceData.lang = req.body.translatedLang
-        transSentenceData.text = req.body.translatedText
-        transSentenceData.difficulty = getSentenceDifficulty(transSentenceData.text);
-        transSentenceData.created = getCurrentTime();
-        transSentenceData.modified =  transSentenceData.created;
-        return database('sentences')
-        .insert(transSentenceData)
-        .then(function (data) {
-          const linksSourceLang = {
-            sentenceid: id,
-            translationid: transSentenceData.id
-          }
-          const linksTransaltionLang = {
-            sentenceid: transSentenceData.id,
-            translationid: id
-          }
-          return database('links')
-            .insert([linksSourceLang, linksTransaltionLang])
-            .then(function (data) {
-                res.status(200)
-                .json({
-                    status: 'success',
-                    message: 'Translation added successfully.'
-                    });
-            })
-            .catch(function (err) {
-                res.status(500)
-                .json({
-                    status: 'failure',
-                    data:err,
-                    message: 'Add translation error!33.'});
-            });
-        }).catch(function (err) {
-          res.status(500)
-          .json({
-              status: 'failure',
-              data:err,
-              message: 'Add translation error!22.'});
-          });
-      } else {
-        res.status(200)
-        .json({
-            status: 'success',
-            message: 'sentence added successfully.'
-            });
-      }
-    }).catch(function (err) {
-      return res.status(500)
-      .json({
-          status: 'Failure',
-          data:err,
-          message: 'Add error error!11.'});
-    });
-  })
-  .catch(function (err) {
-    return res.status(500)
-      .json({
-        status: 'Failure',
-        data:err,
-        message:'Error occurring'});
-  });
-});
-
-// Add translation to sentence
-sentencesRouter.post("/add-translation", (req, res) => {
-  if(!req.body.translatedText){
-    res.status(400)
-        .json({
-            status: 'failure',
-            message:'Translated text required.'});
-  }
-
-  if(!req.body.translatedLang) {
-    res.status(400)
-        .json({
-            status: 'failure',
-            message:'Translated language required.'});
-  }
-
-  return database('sentences').max('sentences.id')
-  .then(function (data) {
-    let id = MAX_TATOEBA_RECORDS + 1 
-    if(data[0].max > MAX_TATOEBA_RECORDS) {
-      id = data[0].max + 1;
-    }
-    const transSentenceData = {};
-    transSentenceData.id = id;
-    const sentenceId = req.body.sentenceId
-    transSentenceData.lang = req.body.translatedLang
-    transSentenceData.text = req.body.translatedText
-    transSentenceData.difficulty = getSentenceDifficulty(transSentenceData.text);
-    transSentenceData.created = getCurrentTime();
-    transSentenceData.modified =  transSentenceData.created;
-    return database('sentences')
-    .insert(transSentenceData)
-    .then(function (data) {
-      const linksSourceLang = {
-        sentenceid: sentenceId,
-        translationid: transSentenceData.id
-      }
-      const linksTransaltionLang = {
-        sentenceid: transSentenceData.id,
-        translationid: sentenceId
-      }
-      return database('links')
-        .insert([linksSourceLang, linksTransaltionLang])
-        .then(function (data) {
-            res.status(200)
-            .json({
-                status: 'success',
-                message: 'Translation added successfully.'
-                });
-        })
-        .catch(function (err) {
-          console.log(JSON.stringify(err))
-            res.status(500)
-            .json({
-                status: 'failure',
-                data:err,
-                message: 'Add translation error!33.'});
-        });
-    }).catch(function (err) {
-      return res.status(500)
-      .json({
-          status: 'failure',
-          data:err,
-          message: 'Add translation error!22.'});
-      });
-    });
-});
-
 // Get Translations for each sentence
  sentencesRouter.get("/translations/:id", (req, res, next) => { 
   let translationsId = req.params.id;
@@ -313,10 +143,160 @@ function getSentenceDifficulty(sentence) {
   return difficulty
 }
 
+// Add cart detail that contains new sentence and
+sentencesRouter.post("/add-card", async (req, res) => {
+  const sentenceData = {};
+  
+  if(!req.body.langText){
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'Sentence text required.'});
+  }
+
+  if(!req.body.lang) {
+    res.status(400)
+    .json({
+        status: 'failure',
+        message:'Sentence tanguage required.'});
+  }
+  sentenceData.text = req.body.langText;
+  sentenceData.lang = req.body.lang;
+  try {
+    const count = await database('sentences').max('sentences.id');
+    let id = MAX_TATOEBA_RECORDS + 1 
+    if(count[0].max > MAX_TATOEBA_RECORDS) {
+      id = count[0].max + 1;
+    }
+    sentenceData.id = id;
+    sentenceData.difficulty = getSentenceDifficulty(sentenceData.text);
+    sentenceData.created = getCurrentTime();
+    sentenceData.modified =  sentenceData.created;
+    sentenceData.status = 'pending'
+    const sentenceInserted = await database('sentences').insert(sentenceData)
+    if(sentenceInserted) {
+      try {
+        await updateCard(req, id);
+      } catch(err) {
+        await database('sentences').where('sentenceid', id).del()
+        return res.status(500)
+        .json({
+          status: 'Failure',
+          data:err,
+          message:'Error occurred while updating card'});
+      }
+    } 
+    res.status(200)
+        .json({
+            status: 'success',
+            message: 'Card added successfully.'
+            });
+  } catch(err) {
+    return res.status(500)
+    .json({
+      status: 'Failure',
+      data:err,
+      message:'Error occurred while saving sentence'});
+  }
+});
+
+// Add cart detail that contains new sentence and
+sentencesRouter.post("/update-card", async (req, res) => {
+  if(req.body.sentenceId){
+    try {
+      await updateCard(req, req.body.sentenceId);
+      res.status(200)
+        .json({
+            status: 'success',
+            message: 'Card updated successfully.'
+            });
+    } catch(err) {
+      return res.status(500)
+      .json({
+        status: 'Failure',
+        data:err,
+        message:'Error occurred while updating card'});
+    }
+  } else {
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'Sentence id required.'});
+  }
+})
+
 function getCurrentTime() {
   var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
   var time = (new Date(Date.now() - tzoffset)).toISOString().slice(0, -1);
   return time.replace("T", " ");
+}
+
+async function updateCard (req , sentenceId) {
+  let id = sentenceId;
+  if(req.body.translatedText && req.body.translatedLang) {
+    const count = await database('sentences').max('sentences.id');
+    if(count != null) {
+      id = MAX_TATOEBA_RECORDS + 1 
+      if(count[0].max > MAX_TATOEBA_RECORDS) {
+        id = count[0].max + 1;
+      }
+      const transSentenceData = {};
+      transSentenceData.id = id;
+      transSentenceData.lang = req.body.translatedLang
+      transSentenceData.text = req.body.translatedText
+      transSentenceData.difficulty = getSentenceDifficulty(transSentenceData.text);
+      transSentenceData.created = getCurrentTime();
+      transSentenceData.modified =  transSentenceData.created;
+      const transalted = await database('sentences').insert(transSentenceData)
+      if(transalted) {
+        await createLinks(sentenceId, id);
+      }
+    }
+  }
+  if(req.body.audioURL) {
+    const audio = {
+      sentenceid: sentenceId,
+      userid: req.body.userId,
+      audiourl: req.body.audioURL
+    }
+    await database('audios').insert(audio)
+  }
+  if(req.body.videoURL) {
+    const video = {
+      sentenceid: sentenceId,
+      userid: req.body.userId,
+      videourl: req.body.videoURL
+    }
+    await database('videos').insert(video)
+  }
+  if(id && req.body.transalatedAudioURL) {
+    const audio = {
+      sentenceid: id,
+      userid: req.body.userId,
+      audiourl: req.body.transalatedAudioURL
+    }
+    await database('audios').insert(audio)
+  }
+  if(id && req.body.transalatedVedioURL) {
+    const video = {
+      sentenceid: id,
+      userid: req.body.userId,
+      videourl: req.body.transalatedVedioURL
+    }
+    await database('videos').insert(video)
+  }
+}
+
+async function createLinks(sourceId, targetId) {
+  const linksSourceLang = {
+    sentenceid: sourceId,
+    translationid: targetId
+  }
+  const linksTransaltionLang = {
+    sentenceid: targetId,
+    translationid: sourceId
+  }
+  await database('links').insert([linksSourceLang, linksTransaltionLang])
 }
 
 // Exports the router object

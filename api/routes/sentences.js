@@ -42,7 +42,7 @@ sentencesRouter.get("/", (req, res, next) => {
   const difficulty = req.query.difficulty ? JSON.parse(req.query.difficulty) : [1,2,3,4,5];
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution','audios.audiourl', 'favorites.sentenceid as favorite')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')
@@ -73,7 +73,7 @@ sentencesRouter.get("/:id", (req, res, next) => {
   let sentenceId = req.params.id;
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution', 'audios.audiourl', 'favorites.sentenceid as favorite')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')

@@ -6,6 +6,8 @@ const express = require("express");
 const sentencesRouter = express.Router();
 const database = require("../../database");
 const middleware = require("../auth/jwt-check");
+const jwt = require('jsonwebtoken');
+const configData = require("../config/auth-constants");
 
 const MAX_TATOEBA_RECORDS = 8045483;
 
@@ -145,8 +147,8 @@ function getSentenceDifficulty(sentence) {
 }
 
 // Add cart detail that contains new sentence and
-sentencesRouter.post("/add-card", async (req, res) => {
-  // const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
+sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
+  const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
   
   const sentenceData = {};
   
@@ -179,7 +181,7 @@ sentencesRouter.post("/add-card", async (req, res) => {
     const sentenceInserted = await database('sentences').insert(sentenceData)
     if(sentenceInserted) {
       try {
-        await updateCard(req, id, 1);
+        await updateCard(req, id, verifiedJwt.userId);
       } catch(err) {
         await database('sentences').where('sentenceid', id).del()
         return res.status(500)
@@ -204,11 +206,11 @@ sentencesRouter.post("/add-card", async (req, res) => {
 });
 
 // Add cart detail that contains new sentence and
-sentencesRouter.post("/update-card", async (req, res) => {
-  // const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
+sentencesRouter.post("/update-card", middleware.checkToken, async (req, res) => {
+  const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
   if(req.body.sentenceId){
     try {
-      await updateCard(req, req.body.sentenceId, 1);
+      await updateCard(req, req.body.sentenceId, verifiedJwt.userId);
       res.status(200)
         .json({
             status: 'success',
@@ -303,7 +305,7 @@ async function updateCard (req , sentenceId, userId) {
     }
     await database('videos').insert(video)
   }
-  if(id && req.body.transalatedAudioURL) {
+  if(req.body.transalatedAudioURL) {
     const audio = {
       sentenceid: id,
       userid: userId,
@@ -311,7 +313,7 @@ async function updateCard (req , sentenceId, userId) {
     }
     await database('audios').insert(audio)
   }
-  if(id && req.body.transalatedVedioURL) {
+  if(req.body.transalatedVedioURL) {
     const video = {
       sentenceid: id,
       userid: userId,

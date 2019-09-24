@@ -5,6 +5,7 @@ const express = require("express");
 // Include express router middleware
 const sentencesRouter = express.Router();
 const database = require("../../database");
+const middleware = require("../auth/jwt-check");
 
 const MAX_TATOEBA_RECORDS = 8045483;
 
@@ -39,7 +40,7 @@ sentencesRouter.get("/", (req, res, next) => {
   const difficulty = req.query.difficulty ? JSON.parse(req.query.difficulty) : [1,2,3,4,5];
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.username','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')
@@ -70,7 +71,7 @@ sentencesRouter.get("/:id", (req, res, next) => {
   let sentenceId = req.params.id;
 
   database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.username','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
+    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','audios.userid','audios.licence','audios.attribution', 'favorites.sentenceid as favorite')
     .from('sentences')
     .innerJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')
@@ -144,7 +145,9 @@ function getSentenceDifficulty(sentence) {
 }
 
 // Add cart detail that contains new sentence and
-sentencesRouter.post("/add-card", async (req, res) => {
+sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
+  const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
+  
   const sentenceData = {};
   
   if(!req.body.langText){
@@ -176,7 +179,7 @@ sentencesRouter.post("/add-card", async (req, res) => {
     const sentenceInserted = await database('sentences').insert(sentenceData)
     if(sentenceInserted) {
       try {
-        await updateCard(req, id);
+        await updateCard(req, id, verifiedJwt.userId);
       } catch(err) {
         await database('sentences').where('sentenceid', id).del()
         return res.status(500)
@@ -201,10 +204,11 @@ sentencesRouter.post("/add-card", async (req, res) => {
 });
 
 // Add cart detail that contains new sentence and
-sentencesRouter.post("/update-card", async (req, res) => {
+sentencesRouter.post("/update-card", middleware.checkToken, async (req, res) => {
+  const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
   if(req.body.sentenceId){
     try {
-      await updateCard(req, req.body.sentenceId);
+      await updateCard(req, req.body.sentenceId, verifiedJwt.userId);
       res.status(200)
         .json({
             status: 'success',
@@ -225,13 +229,43 @@ sentencesRouter.post("/update-card", async (req, res) => {
   }
 })
 
+// Get Sentence by id
+sentencesRouter.post("/check-sentence", (req, res, next) => {
+  if(!req.body.text){
+    res.status(400)
+        .json({
+            status: 'failure',
+            message:'Sentence text required.'});
+  }
+
+  database
+    .select('sentences.id', 'sentences.lang', 'sentences.text')
+    .from('sentences')
+    .where('sentences.text', req.body.text)
+    .then(function (data) {
+      res.status(200)
+        .json({
+          status: 'success',
+          data: data,
+          message: 'Found sentence'
+        });
+    })
+    .catch(function (err) {
+      res.status(400)
+        .json({
+          status: 'Failure',
+          data:err,
+          message:'Error occurring'});
+    });
+});
+
 function getCurrentTime() {
   var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
   var time = (new Date(Date.now() - tzoffset)).toISOString().slice(0, -1);
   return time.replace("T", " ");
 }
 
-async function updateCard (req , sentenceId) {
+async function updateCard (req , sentenceId, userId) {
   let id = sentenceId;
   if(req.body.translatedText && req.body.translatedLang) {
     const count = await database('sentences').max('sentences.id');
@@ -256,7 +290,7 @@ async function updateCard (req , sentenceId) {
   if(req.body.audioURL) {
     const audio = {
       sentenceid: sentenceId,
-      userid: req.body.userId,
+      userid: userId,
       audiourl: req.body.audioURL
     }
     await database('audios').insert(audio)
@@ -264,7 +298,7 @@ async function updateCard (req , sentenceId) {
   if(req.body.videoURL) {
     const video = {
       sentenceid: sentenceId,
-      userid: req.body.userId,
+      userid: userId,
       videourl: req.body.videoURL
     }
     await database('videos').insert(video)
@@ -272,7 +306,7 @@ async function updateCard (req , sentenceId) {
   if(id && req.body.transalatedAudioURL) {
     const audio = {
       sentenceid: id,
-      userid: req.body.userId,
+      userid: userId,
       audiourl: req.body.transalatedAudioURL
     }
     await database('audios').insert(audio)
@@ -280,7 +314,7 @@ async function updateCard (req , sentenceId) {
   if(id && req.body.transalatedVedioURL) {
     const video = {
       sentenceid: id,
-      userid: req.body.userId,
+      userid: userId,
       videourl: req.body.transalatedVedioURL
     }
     await database('videos').insert(video)
@@ -297,6 +331,7 @@ async function createLinks(sourceId, targetId) {
     translationid: sourceId
   }
   await database('links').insert([linksSourceLang, linksTransaltionLang])
+
 }
 
 // Exports the router object

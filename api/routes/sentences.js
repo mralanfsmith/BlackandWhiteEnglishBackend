@@ -42,7 +42,7 @@ sentencesRouter.get("/", (req, res, next) => {
   database
     .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution','audios.audiourl', 'favorites.sentenceid as favorite')
     .from('sentences')
-    .innerJoin('audios','sentences.id','audios.sentenceid')
+    .leftJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')
     .where({'sentences.lang': lang})
     .whereIn('sentences.difficulty', difficulty)
@@ -175,7 +175,7 @@ sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
     try {
       await updateCard(req, newSentenceId[0], verifiedJwt.userId);
     } catch(err) {
-      await database('sentences').where('sentenceid', id).del()
+      // await database('sentences').where('sentenceid', id).del()
       return res.status(500)
       .json({
         status: 'Failure',
@@ -277,7 +277,9 @@ async function updateCard (req , sentenceId, userId) {
     const audio = {
       sentenceid: sentenceId,
       userid: userId,
-      audiourl: req.body.audioURL
+      audiourl: req.body.audioURL,
+      status : 'pending',
+      created : getCurrentTime()
     }
     await database('audios').insert(audio)
   }
@@ -285,7 +287,9 @@ async function updateCard (req , sentenceId, userId) {
     const video = {
       sentenceid: sentenceId,
       userid: userId,
-      videourl: req.body.videoURL
+      videourl: req.body.videoURL,
+      status : 'pending',
+      created : getCurrentTime()
     }
     await database('videos').insert(video)
   }
@@ -293,7 +297,9 @@ async function updateCard (req , sentenceId, userId) {
     const audio = {
       sentenceid: transalationId,
       userid: userId,
-      audiourl: req.body.transalatedAudioURL
+      audiourl: req.body.transalatedAudioURL,
+      status : 'pending',
+      created : getCurrentTime()
     }
     await database('audios').insert(audio)
   }
@@ -301,7 +307,9 @@ async function updateCard (req , sentenceId, userId) {
     const video = {
       sentenceid: transalationId,
       userid: userId,
-      videourl: req.body.transalatedVedioURL
+      videourl: req.body.transalatedVedioURL,
+      status : 'pending',
+      created : getCurrentTime()
     }
     await database('videos').insert(video)
   }

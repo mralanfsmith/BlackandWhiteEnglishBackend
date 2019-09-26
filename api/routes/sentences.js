@@ -8,6 +8,7 @@ const database = require("../../database");
 const middleware = require("../auth/jwt-check");
 const jwt = require('jsonwebtoken');
 const configData = require("../config/auth-constants");
+const dbHelper = require("../helpers/dbhelper");
 
 // Get Sentence Count
 sentencesRouter.get("/count/", (req, res, next) => { 
@@ -38,7 +39,7 @@ sentencesRouter.get("/", (req, res, next) => {
   const offset = (page - 1) * limit;
   const lang = req.query.lang;
   const difficulty = req.query.difficulty ? JSON.parse(req.query.difficulty) : [1,2,3,4,5];
-
+  
   database
     .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution','audios.audiourl', 'favorites.sentenceid as favorite')
     .from('sentences')
@@ -127,68 +128,56 @@ database
     });
 });
 
-function getSentenceDifficulty(sentence) {
-  let difficulty = 1;
-  const numOfWords = sentence.split(' ').length;
-  if(numOfWords <= 3) {
-    difficulty = 1;
-  } else if(numOfWords > 3 && numOfWords <= 6) {
-    difficulty = 2;
-  } else if(numOfWords > 6 && numOfWords <= 9) {
-    difficulty = 3;
-  } else if(numOfWords > 9 && numOfWords <= 12) {
-    difficulty = 4;
-  } else if(numOfWords > 12) {
-    difficulty = 5;
-  }
-  return difficulty
-}
-
-// Add cart detail that contains new sentence and
-sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
+ // Add cart detail that contains new sentence and
+ sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
   const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
   
-  const sentenceData = {};
-  
   if(!req.body.langText){
-    res.status(400)
+    return res.status(400)
         .json({
             status: 'failure',
             message:'Sentence text required.'});
   }
 
   if(!req.body.lang) {
-    res.status(400)
+    return res.status(400)
     .json({
         status: 'failure',
-        message:'Sentence tanguage required.'});
+        message:'Sentence language required.'});
   }
-  sentenceData.text = req.body.langText;
-  sentenceData.lang = req.body.lang;
-  try {
-    sentenceData.difficulty = getSentenceDifficulty(sentenceData.text);
-    sentenceData.created = getCurrentTime();
-    sentenceData.modified =  sentenceData.created;
-    sentenceData.status = 'pending'
-    sentenceData.usercreated = true;
-    const newSentenceId = await database('sentences').insert(sentenceData).returning("id")
-    try {
-      await updateCard(req, newSentenceId[0], verifiedJwt.userId);
-    } catch(err) {
-      // await database('sentences').where('sentenceid', id).del()
-      return res.status(500)
-      .json({
-        status: 'Failure',
-        data:err,
-        message:'Error occurred while updating card'});
+
+  const checkSentence = await dbHelper.checkSentence(req.body.langText, req.body.lang)
+  if(checkSentence && checkSentence.length > 0) {
+    return res.status(400)
+        .json({
+            status: 'failure',
+            message:'This Sentence is already present in databse for given language.'});
+  }
+
+  if(req.body.translatedText && req.body.translatedLang) {
+    const checkSentence = await dbHelper.checkSentence(req.body.translatedText, req.body.translatedLang)
+    if(checkSentence && checkSentence.length > 0) {
+      return res.status(400)
+          .json({
+              status: 'failure',
+              message:'This Transaltion is already present in databse for given language.'});
     }
+  }
+
+  try {
+    const sentenceData = {};
+    sentenceData.text = req.body.langText;
+    sentenceData.lang = req.body.lang;
+    sentenceData.status = 'pending'
+    const newSentenceId = await dbHelper.createSentence(sentenceData);
+    await dbHelper.updateCard(req, newSentenceId[0], verifiedJwt.userId, 'pending');
     res.status(200)
         .json({
             status: 'success',
             message: 'Card added successfully.'
             });
   } catch(err) {
-    return res.status(500)
+    res.status(500)
     .json({
       status: 'Failure',
       data:err,
@@ -196,36 +185,46 @@ sentencesRouter.post("/add-card", middleware.checkToken, async (req, res) => {
   }
 });
 
-// Add cart detail that contains new sentence and
+// Update cart detail : add translation/audio/vedio
 sentencesRouter.post("/update-card", middleware.checkToken, async (req, res) => {
   const verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
-  if(req.body.sentenceId){
-    try {
-      await updateCard(req, req.body.sentenceId, verifiedJwt.userId);
-      res.status(200)
-        .json({
-            status: 'success',
-            message: 'Card updated successfully.'
-            });
-    } catch(err) {
-      return res.status(500)
-      .json({
-        status: 'Failure',
-        data:err,
-        message:'Error occurred while updating card'});
-    }
-  } else {
-    res.status(400)
+  if(!req.body.sentenceId){
+    return res.status(400)
         .json({
             status: 'failure',
             message:'Sentence id required.'});
+  }
+
+  if(req.body.translatedText && req.body.translatedLang) {
+    const checkSentence = await dbHelper.checkSentence(req.body.translatedText, req.body.translatedLang)
+    if(checkSentence && checkSentence.length > 0) {
+      return res.status(400)
+          .json({
+              status: 'failure',
+              message:'This Transaltion is already present in databse for given language.'});
+    }
+  }
+
+  try {
+    await dbHelper.updateCard(req, req.body.sentenceId, verifiedJwt.userId, 'pending');
+    res.status(200)
+      .json({
+          status: 'success',
+          message: 'Card updated successfully.'
+          });
+  } catch(err) {
+    return res.status(500)
+    .json({
+      status: 'Failure',
+      data:err,
+      message:'Error occurred while updating card'});
   }
 })
 
 // Get Sentence by id
 sentencesRouter.post("/check-sentence", (req, res, next) => {
   if(!req.body.text){
-    res.status(400)
+    return res.status(400)
         .json({
             status: 'failure',
             message:'Sentence text required.'});
@@ -251,81 +250,6 @@ sentencesRouter.post("/check-sentence", (req, res, next) => {
           message:'Error occurring'});
     });
 });
-
-function getCurrentTime() {
-  var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
-  var time = (new Date(Date.now() - tzoffset)).toISOString().slice(0, -1);
-  return time.replace("T", " ");
-}
-
-async function updateCard (req , sentenceId, userId) {
-  let transalationId = sentenceId;
-  if(req.body.translatedText && req.body.translatedLang) {
-    const transSentenceData = {};
-    transSentenceData.lang = req.body.translatedLang
-    transSentenceData.text = req.body.translatedText
-    transSentenceData.difficulty = getSentenceDifficulty(transSentenceData.text);
-    transSentenceData.created = getCurrentTime();
-    transSentenceData.modified =  transSentenceData.created;
-    transSentenceData.usercreated = true;
-    transSentenceData.status = 'pending'
-    const newId = await database('sentences').insert(transSentenceData).returning("id")
-    transalationId = newId[0]
-    await createLinks(sentenceId, transalationId);
-  }
-  if(req.body.audioURL) {
-    const audio = {
-      sentenceid: sentenceId,
-      userid: userId,
-      audiourl: req.body.audioURL,
-      status : 'pending',
-      created : getCurrentTime()
-    }
-    await database('audios').insert(audio)
-  }
-  if(req.body.videoURL) {
-    const video = {
-      sentenceid: sentenceId,
-      userid: userId,
-      videourl: req.body.videoURL,
-      status : 'pending',
-      created : getCurrentTime()
-    }
-    await database('videos').insert(video)
-  }
-  if(req.body.transalatedAudioURL) {
-    const audio = {
-      sentenceid: transalationId,
-      userid: userId,
-      audiourl: req.body.transalatedAudioURL,
-      status : 'pending',
-      created : getCurrentTime()
-    }
-    await database('audios').insert(audio)
-  }
-  if(req.body.transalatedVedioURL) {
-    const video = {
-      sentenceid: transalationId,
-      userid: userId,
-      videourl: req.body.transalatedVedioURL,
-      status : 'pending',
-      created : getCurrentTime()
-    }
-    await database('videos').insert(video)
-  }
-}
-
-async function createLinks(sourceId, targetId) {
-  const linksSourceLang = {
-    sentenceid: sourceId,
-    translationid: targetId
-  }
-  const linksTransaltionLang = {
-    sentenceid: targetId,
-    translationid: sourceId
-  }
-  await database('links').insert([linksSourceLang, linksTransaltionLang])
-}
 
 // Exports the router object
 module.exports = sentencesRouter;

@@ -73,7 +73,7 @@ sentencesRouter.get("/:id", (req, res, next) => {
   database
     .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution', 'audios.audiourl', 'favorites.sentenceid as favorite')
     .from('sentences')
-    .innerJoin('audios','sentences.id','audios.sentenceid')
+    .leftJoin('audios','sentences.id','audios.sentenceid')
     .leftJoin('favorites','sentences.id','favorites.sentenceid')
     .where('sentences.id', sentenceId)
     .then(function (data) {

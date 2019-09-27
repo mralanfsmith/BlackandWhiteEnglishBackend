@@ -19,6 +19,7 @@ const userRoutes = require("./api/routes/users"); //Users route
 const historyRoutes = require("./api/routes/history"); //History route
 const favoriteRoutes = require("./api/routes/favorites"); //Favorites route
 const profileRoutes = require("./api/routes/profiles"); //User profile route
+const adminRoutes = require("./api/routes/admin"); //Admin route
 
 // Use routes
 app.use("/v1/sentences", sentenceRoutes);
@@ -27,6 +28,7 @@ app.use("/v1/users", userRoutes);
 app.use("/v1/history", historyRoutes);
 app.use("/v1/favorites", favoriteRoutes);
 app.use("/v1/profiles", profileRoutes);
+app.use("/v1/admin", adminRoutes);
 
 const port = process.env.PORT || 3001;
 app.listen(port); //Set port for express to listen on.

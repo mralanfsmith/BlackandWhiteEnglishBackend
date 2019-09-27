@@ -9,6 +9,7 @@ const middleware = require("../auth/jwt-check");
 const jwt = require('jsonwebtoken');
 const configData = require("../config/auth-constants");
 const dbHelper = require("../helpers/dbhelper");
+const lib = require("../helpers/lib");
 
 // Get Sentence Count
 sentencesRouter.get("/count/", (req, res, next) => { 
@@ -168,9 +169,9 @@ database
     const sentenceData = {};
     sentenceData.text = req.body.langText;
     sentenceData.lang = req.body.lang;
-    sentenceData.status = 'pending'
+    sentenceData.status = lib.Status.PENDING
     const newSentenceId = await dbHelper.createSentence(sentenceData);
-    await dbHelper.updateCard(req, newSentenceId[0], verifiedJwt.userId, 'pending');
+    await dbHelper.updateCard(req, newSentenceId[0], verifiedJwt.userId, lib.Status.PENDING);
     res.status(200)
         .json({
             status: 'success',
@@ -206,7 +207,7 @@ sentencesRouter.post("/update-card", middleware.checkToken, async (req, res) => 
   }
 
   try {
-    await dbHelper.updateCard(req, req.body.sentenceId, verifiedJwt.userId, 'pending');
+    await dbHelper.updateCard(req, req.body.sentenceId, verifiedJwt.userId, lib.Status.PENDING);
     res.status(200)
       .json({
           status: 'success',

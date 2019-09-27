@@ -75,6 +75,12 @@ module.exports = {
           }
           await database('videos').insert(video)
         }
+    },
+    updateSentencesStatus : async (idList, status) => {
+        return await  database('sentences').whereIn('id', idList).update({ status: status })
+    },
+    updateAudiosStatus : async (idList, status) => {
+        return await  database('audios').whereIn('audioid', idList).update({ status: status })
     }
 }
 

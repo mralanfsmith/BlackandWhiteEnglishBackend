@@ -96,37 +96,37 @@ sentencesRouter.get("/:id", (req, res, next) => {
 });
 
 // Get Translations for each sentence
- sentencesRouter.get("/translations/:id", (req, res, next) => { 
-  let translationsId = req.params.id;
-  let translation0 = req.query.translation0;
-  if (translation0 == null || !translation0) translation0 = 'none';
-  let translation1 = req.query.translation1;
-  if (translation1 == null || !translation1) translation1 = 'none';
-  let translation2 = req.query.translation2;
-  if (translation2 == null || !translation2) translation2 = 'none';
-  
-database
-  .select('sentences.id', 'sentences.lang', 'sentences.text', 'links.translationid')
-  .from('sentences')
-  .innerJoin('links','sentences.id','links.sentenceid')
-  .where({'links.translationid':translationsId})
-  .whereIn('sentences.lang', [translation0, translation1, translation2])
-  .orderBy('sentences.lang')
-  .then(function (data) {
-      res.status(200)
-        .json({
-          status: 'success',
-          data: data,
-          message: 'Retrieved sentences'
-        });
-    })
-    .catch(function (err) {
-      res.status(400)
-        .json({
-          status: 'Failure',
-          data:err,
-          message:'Error occurring'});
-    });
+sentencesRouter.get("/translations/:id", (req, res, next) => { 
+  const translationsId = req.params.id;
+
+  let translatedLanguages = req.query.translatedLanguages;
+  if(req.query.translatedLanguages) {
+    translatedLanguages = JSON.parse(req.query.translatedLanguages)
+  }
+
+  database
+    .select('sentences.id', 'sentences.lang', 'sentences.text', 'links.translationid','audios.userid','audios.licence','audios.attribution', 'audios.audiourl')
+    .from('sentences')
+    .innerJoin('links','sentences.id','links.sentenceid')
+    .leftJoin('audios','sentences.id','audios.sentenceid')
+    .where({'links.translationid':translationsId})
+    .whereIn('sentences.lang', translatedLanguages)
+    .orderBy('sentences.lang')
+    .then(function (data) {
+        res.status(200)
+          .json({
+            status: 'success',
+            data: data,
+            message: 'Retrieved sentences'
+          });
+      })
+      .catch(function (err) {
+        res.status(400)
+          .json({
+            status: 'Failure',
+            data:err,
+            message:'Error occurring'});
+      });
 });
 
  // Add cart detail that contains new sentence and

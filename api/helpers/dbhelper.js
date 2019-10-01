@@ -55,21 +55,21 @@ module.exports = {
           }
           await database('videos').insert(video)
         }
-        if(req.body.transalatedAudioURL) {
+        if(req.body.translatedAudioURL) {
           const audio = {
             sentenceid: transalationId,
             userid: userId,
-            audiourl: req.body.transalatedAudioURL,
+            audiourl: req.body.translatedAudioURL,
             status : status,
             created : lib.getCurrentTime()
           }
           await database('audios').insert(audio)
         }
-        if(req.body.transalatedVedioURL) {
+        if(req.body.translatedVideoURL) {
           const video = {
             sentenceid: transalationId,
             userid: userId,
-            videourl: req.body.transalatedVedioURL,
+            videourl: req.body.translatedVideoURL,
             status : status,
             created : lib.getCurrentTime()
           }

@@ -256,5 +256,21 @@ usersRouter.put("/profile", (req, res) => {
 
 });
 
+//To provide AWS keys
+usersRouter.get("/aws-detail", (req, res) => {
+ const awsDetail = {
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_KEY,
+    region: process.env.AWS_REGION,
+    s3Bucket: process.env.S3_BUCKET_BLACKANDWHITE 
+ }
+
+ return res.status(200)
+  .json({
+    status: 'success',
+    data: awsDetail,
+    message: 'Retrieved aws detail'
+  });
+})
 // Exports the router object
 module.exports = usersRouter;

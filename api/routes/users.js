@@ -7,6 +7,7 @@ const Helper = require('../../controllers/Helper');
 const uuidv4 = require('uuid/v4');
 const jwt = require('jsonwebtoken');
 const secret = '12345678910';
+const middleware = require("../auth/jwt-check");
 
 //Register User
 usersRouter.post("/create", (req, res) => {
@@ -257,7 +258,7 @@ usersRouter.put("/profile", (req, res) => {
 });
 
 //To provide AWS keys
-usersRouter.get("/aws-detail", (req, res) => {
+usersRouter.get("/aws-detail", middleware.checkToken, (req, res) => {
  const awsDetail = {
     accessKeyId: process.env.AWS_ACCESS_KEY,
     secretAccessKey: process.env.AWS_SECRET_KEY,

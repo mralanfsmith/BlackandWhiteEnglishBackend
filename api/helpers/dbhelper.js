@@ -5,6 +5,9 @@ module.exports = {
     checkSentence : async (text, lang) => {
         return await database.select('sentences.id').from('sentences').where('sentences.text', text).andWhere('sentences.lang',lang)
     },
+    checkSentenceId : async (id) => {
+      return await database.select('sentences.id').from('sentences').where('sentences.id', id)
+    },
     createSentence : async (sentenceData) => {
         sentenceData.difficulty = lib.getSentenceDifficulty(sentenceData.text);
         sentenceData.created = lib.getCurrentTime();

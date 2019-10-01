@@ -196,6 +196,14 @@ sentencesRouter.post("/update-card", middleware.checkToken, async (req, res) => 
             message:'Sentence id required.'});
   }
 
+  const checkSentenceId = await dbHelper.checkSentenceId(req.body.sentenceId)
+  if(!(checkSentenceId && checkSentenceId.length > 0)) {
+    return res.status(400)
+        .json({
+            status: 'failure',
+            message:'Given sentence id does not exist in database.'});
+  }
+
   if(req.body.translatedText && req.body.translatedLang) {
     const checkSentence = await dbHelper.checkSentence(req.body.translatedText, req.body.translatedLang)
     if(checkSentence && checkSentence.length > 0) {

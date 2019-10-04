@@ -10,7 +10,7 @@ module.exports = {
     },
     getSentenceById : async (id) => {
       return await database
-        .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.audioid','audios.status as audiostatus','audios.userid','audios.licence','audios.attribution', 'audios.audiourl', 'favorites.sentenceid as favorite')
+        .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','sentences.audiochecked','audios.audioid','audios.userid','audios.licence','audios.attribution', 'audios.audiourl', 'favorites.sentenceid as favorite')
         .from('sentences')
         .leftJoin('audios','sentences.id','audios.sentenceid')
         .leftJoin('favorites','sentences.id','favorites.sentenceid')
@@ -60,6 +60,7 @@ module.exports = {
             }
             await database('audios').insert(audio)
           }
+          await database('sentences').where('id', sentenceId).update({ audiochecked: true })
         }
         if(req.body.videoURL) {
           const video = {
@@ -85,6 +86,7 @@ module.exports = {
             }
             await database('audios').insert(audio)
          }
+         await database('sentences').where('id', transalationId).update({ audiochecked: true })
         }
         if(req.body.translatedVideoURL) {
           const video = {
@@ -116,8 +118,8 @@ module.exports = {
     updateAudiosUrl : async (audioId, audioURL) => {
       return await  database('audios').where('audioid', audioId).update({ audiourl: audioURL, created: lib.getCurrentTime() })
     },
-    updateAudiosDownloadCheck : async (audioId, status) => {
-      return await  database('audios').where('audioid', audioId).update({ status: status, created: lib.getCurrentTime() })
+    updateAudioCheckStatus : async (id, status) => {
+      return await  database('sentences').where('id', id).update({ audiochecked: status })
     }
 }
 

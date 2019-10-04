@@ -44,7 +44,7 @@ sentencesRouter.get("/", async (req, res, next) => {
   
   try {
     const sentenceData = await database
-      .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.audioid','audios.status as audiostatus','audios.userid','audios.licence','audios.attribution','audios.audiourl', 'favorites.sentenceid as favorite')
+      .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','sentences.audiochecked','audios.audioid','audios.userid','audios.licence','audios.attribution','audios.audiourl', 'favorites.sentenceid as favorite')
       .from('sentences')
       .leftJoin('audios','sentences.id','audios.sentenceid')
       .leftJoin('favorites','sentences.id','favorites.sentenceid')
@@ -57,7 +57,7 @@ sentencesRouter.get("/", async (req, res, next) => {
     if(sentenceData && sentenceData.length > 0) {
       for (i in sentenceData) {
         const sentence = sentenceData[i];
-        if(!sentence.usercreated && !sentence.audiourl && sentence.audiostatus !== lib.Status.DOWNLOADED) {
+        if(!sentence.usercreated && !sentence.audiourl && !sentence.audiochecked) {
           let lang;
           if(sentence.lang === 'eng-whiteenglish') {
             lang = 'eng'
@@ -71,12 +71,9 @@ sentencesRouter.get("/", async (req, res, next) => {
             } else {
               await dbHelper.updateAudiosUrl(sentence.audioid, uploadedData.Location)
             }
+            await dbHelper.updateAudioCheckStatus(sentence.id, true)
           } else if(uploadedData === 404) {
-            if(!sentence.audioid) {
-              await dbHelper.insertAudio(sentence.id, null, null, lib.Status.DOWNLOADED)
-            } else {
-              await dbHelper.updateAudiosDownloadCheck(sentence.audioid, lib.Status.DOWNLOADED)
-            }
+              await dbHelper.updateAudioCheckStatus(sentence.id, true)
           }
         }
       }
@@ -112,7 +109,7 @@ sentencesRouter.get("/:id", async (req, res) => {
     if(sentenceData && sentenceData.length > 0) {
       for (i in sentenceData) {
         const sentence = sentenceData[i];
-        if(!sentence.usercreated && !sentence.audiourl && sentence.audiostatus !== lib.Status.DOWNLOADED) {
+        if(!sentence.usercreated && !sentence.audiourl && !sentence.audiochecked) {
           let lang;
           if(sentence.lang === 'eng-whiteenglish') {
             lang = 'eng'
@@ -126,12 +123,9 @@ sentencesRouter.get("/:id", async (req, res) => {
             } else {
               await dbHelper.updateAudiosUrl(sentence.audioid, uploadedData.Location)
             }
+            await dbHelper.updateAudioCheckStatus(sentence.id, true)
           } else if(uploadedData === 404) {
-            if(!sentence.audioid) {
-              await dbHelper.insertAudio(sentence.id, null, null, lib.Status.DOWNLOADED)
-            } else {
-              await dbHelper.updateAudiosDownloadCheck(sentence.audioid, lib.Status.DOWNLOADED)
-            }
+              await dbHelper.updateAudioCheckStatus(sentence.id, true)
           }
         }
       }
@@ -250,7 +244,7 @@ sentencesRouter.post("/update-card", middleware.checkToken, async (req, res) => 
         .json({
             status: 'failure',
             message:'Sentence id required.'});
-  }
+  } 
 
   const checkSentenceId = await dbHelper.checkSentenceId(req.body.sentenceId)
   if(!(checkSentenceId && checkSentenceId.length > 0)) {

@@ -57,7 +57,6 @@ sentencesRouter.get("/", async (req, res, next) => {
     if(sentenceData && sentenceData.length > 0) {
       for (i in sentenceData) {
         const sentence = sentenceData[i];
-        console.log(JSON.stringify(sentenceData))
         if(!sentence.usercreated && !sentence.audiourl && sentence.audiostatus !== lib.Status.DOWNLOADED) {
           let lang;
           if(sentence.lang === 'eng-whiteenglish') {
@@ -113,7 +112,6 @@ sentencesRouter.get("/:id", async (req, res) => {
     if(sentenceData && sentenceData.length > 0) {
       for (i in sentenceData) {
         const sentence = sentenceData[i];
-        console.log(JSON.stringify(sentenceData))
         if(!sentence.usercreated && !sentence.audiourl && sentence.audiostatus !== lib.Status.DOWNLOADED) {
           let lang;
           if(sentence.lang === 'eng-whiteenglish') {

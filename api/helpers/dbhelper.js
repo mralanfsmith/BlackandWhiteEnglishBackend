@@ -47,14 +47,19 @@ module.exports = {
             await database('links').insert([linksSourceLang, linksTransaltionLang])
         }
         if(req.body.audioURL) {
-          const audio = {
-            sentenceid: sentenceId,
-            userid: userId,
-            audiourl: req.body.audioURL,
-            status : status,
-            created : lib.getCurrentTime()
+          const preAudio = await database.select('audios.audioid').from('audios').where('sentenceid', sentenceId)
+          if(preAudio && preAudio.length > 0) {
+            await  database('audios').where('audioid', audioId).update({ audiourl: req.body.audioURL, created: lib.getCurrentTime(), status: status, userid: userId })
+          } else {
+            const audio = {
+              sentenceid: sentenceId,
+              userid: userId,
+              audiourl: req.body.audioURL,
+              status : status,
+              created : lib.getCurrentTime()
+            }
+            await database('audios').insert(audio)
           }
-          await database('audios').insert(audio)
         }
         if(req.body.videoURL) {
           const video = {
@@ -67,14 +72,19 @@ module.exports = {
           await database('videos').insert(video)
         }
         if(req.body.translatedAudioURL) {
-          const audio = {
-            sentenceid: transalationId,
-            userid: userId,
-            audiourl: req.body.translatedAudioURL,
-            status : status,
-            created : lib.getCurrentTime()
-          }
-          await database('audios').insert(audio)
+          const preAudio = await database.select('audios.audioid').from('audios').where('sentenceid', transalationId)
+          if(preAudio && preAudio.length > 0) {
+            await  database('audios').where('audioid', audioId).update({ audiourl: req.body.translatedAudioURL, created: lib.getCurrentTime(), status: status, userid: userId })
+          } else {
+            const audio = {
+              sentenceid: transalationId,
+              userid: userId,
+              audiourl: req.body.translatedAudioURL,
+              status : status,
+              created : lib.getCurrentTime()
+            }
+            await database('audios').insert(audio)
+         }
         }
         if(req.body.translatedVideoURL) {
           const video = {
@@ -108,6 +118,9 @@ module.exports = {
     },
     updateAudiosDownloadCheck : async (audioId, status) => {
       return await  database('audios').where('audioid', audioId).update({ status: status, created: lib.getCurrentTime() })
+    },
+    getAudio : async (sentenceId) => {
+      return await database.select('audios.audioid').from('audios').where('sentenceid', sentenceId)
     }
 }
 

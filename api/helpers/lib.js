@@ -25,7 +25,8 @@ module.exports = {
 const Status = { 
   APPROVED: 'approved', 
   PENDING: 'pending', 
-  REJECTED: 'rejected' 
+  REJECTED: 'rejected',
+  DOWNLOADED: 'checked'
 }
 
 module.exports.Status = Status

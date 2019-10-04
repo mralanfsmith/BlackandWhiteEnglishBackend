@@ -8,6 +8,14 @@ module.exports = {
     checkSentenceId : async (id) => {
       return await database.select('sentences.id').from('sentences').where('sentences.id', id)
     },
+    getSentenceById : async (id) => {
+      return await database
+        .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.audioid','audios.status as audiostatus','audios.userid','audios.licence','audios.attribution', 'audios.audiourl', 'favorites.sentenceid as favorite')
+        .from('sentences')
+        .leftJoin('audios','sentences.id','audios.sentenceid')
+        .leftJoin('favorites','sentences.id','favorites.sentenceid')
+        .where('sentences.id', id);
+    },
     createSentence : async (sentenceData) => {
         sentenceData.difficulty = lib.getSentenceDifficulty(sentenceData.text);
         sentenceData.created = lib.getCurrentTime();
@@ -84,6 +92,22 @@ module.exports = {
     },
     updateAudiosStatus : async (idList, status) => {
         return await  database('audios').whereIn('audioid', idList).update({ status: status })
+    },
+    insertAudio: async(sentenceid, userId, audioURL, status) => {
+      const audio = {
+        sentenceid: sentenceid,
+        userid: userId,
+        audiourl: audioURL,
+        status : status,
+        created : lib.getCurrentTime()
+      }
+      await database('audios').insert(audio).returning("audioid")
+    },
+    updateAudiosUrl : async (audioId, audioURL) => {
+      return await  database('audios').where('audioid', audioId).update({ audiourl: audioURL, created: lib.getCurrentTime() })
+    },
+    updateAudiosDownloadCheck : async (audioId, status) => {
+      return await  database('audios').where('audioid', audioId).update({ status: status, created: lib.getCurrentTime() })
     }
 }
 

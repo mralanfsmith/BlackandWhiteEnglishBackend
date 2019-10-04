@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const configData = require("../config/auth-constants");
 const dbHelper = require("../helpers/dbhelper");
 const lib = require("../helpers/lib");
+const awsHelper = require("../helpers/awsHelper");
 
 // Get Sentence Count
 sentencesRouter.get("/count/", (req, res, next) => { 
@@ -33,7 +34,7 @@ sentencesRouter.get("/count/", (req, res, next) => {
 });
 
 // Get Sentences for specific language
-sentencesRouter.get("/", (req, res, next) => { 
+sentencesRouter.get("/", async (req, res, next) => { 
   const limit = 1;
   let page = req.query.pg;
   if (page < 1 || !page) page = 1;
@@ -41,58 +42,115 @@ sentencesRouter.get("/", (req, res, next) => {
   const lang = req.query.lang;
   const difficulty = req.query.difficulty ? JSON.parse(req.query.difficulty) : [1,2,3,4,5];
   
-  database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution','audios.audiourl', 'favorites.sentenceid as favorite')
-    .from('sentences')
-    .leftJoin('audios','sentences.id','audios.sentenceid')
-    .leftJoin('favorites','sentences.id','favorites.sentenceid')
-    .where({'sentences.lang': lang})
-    .whereIn('sentences.difficulty', difficulty)
-    .limit(limit)
-    .offset(offset)
-    .orderBy('sentences.id', 'desc')
-    .then(function (data) {
-      res.status(200)
-        .json({
-          status: 'success',
-          data: data,
-          message: 'Retrieved sentence'
-        });
-    })
-    .catch(function (err) {
+  try {
+    const sentenceData = await database
+      .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.audioid','audios.status as audiostatus','audios.userid','audios.licence','audios.attribution','audios.audiourl', 'favorites.sentenceid as favorite')
+      .from('sentences')
+      .leftJoin('audios','sentences.id','audios.sentenceid')
+      .leftJoin('favorites','sentences.id','favorites.sentenceid')
+      .where({'sentences.lang': lang})
+      .whereIn('sentences.difficulty', difficulty)
+      .limit(limit)
+      .offset(offset)
+      .orderBy('sentences.id', 'desc')
+
+    if(sentenceData && sentenceData.length > 0) {
+      for (i in sentenceData) {
+        const sentence = sentenceData[i];
+        console.log(JSON.stringify(sentenceData))
+        if(!sentence.usercreated && !sentence.audiourl && sentence.audiostatus !== lib.Status.DOWNLOADED) {
+          let lang;
+          if(sentence.lang === 'eng-whiteenglish') {
+            lang = 'eng'
+          }
+          const uploadedData = await awsHelper.uploadAudio(sentence.id, lang);
+          if(uploadedData && uploadedData != 404) {
+            sentence.audiourl = uploadedData.Location
+            if(!sentence.audioid) {
+              const newAudio = await dbHelper.insertAudio(sentence.id, null, uploadedData.Location, lib.Status.APPROVED)
+              sentence.audioid = newAudio[0].audioid
+            } else {
+              await dbHelper.updateAudiosUrl(sentence.audioid, uploadedData.Location)
+            }
+          } else if(uploadedData === 404) {
+            if(!sentence.audioid) {
+              await dbHelper.insertAudio(sentence.id, null, null, lib.Status.DOWNLOADED)
+            } else {
+              await dbHelper.updateAudiosDownloadCheck(sentence.audioid, lib.Status.DOWNLOADED)
+            }
+          }
+        }
+      }
+    }
+    res.status(200)
+      .json({
+        status: 'success',
+        data: sentenceData,
+        message: 'Retrieved sentence'
+      }); 
+    } catch(err) {
       res.status(400)
         .json({
           status: 'Failure',
           data:err,
           message:'Error occurring'});
-    });
+    };
 });
 
 // Get Sentence by id
-sentencesRouter.get("/:id", (req, res, next) => {
-  let sentenceId = req.params.id;
+sentencesRouter.get("/:id", async (req, res) => {
 
-  database
-    .select('sentences.id', 'sentences.lang', 'sentences.text','sentences.difficulty','sentences.usercreated','audios.userid','audios.licence','audios.attribution', 'audios.audiourl', 'favorites.sentenceid as favorite')
-    .from('sentences')
-    .leftJoin('audios','sentences.id','audios.sentenceid')
-    .leftJoin('favorites','sentences.id','favorites.sentenceid')
-    .where('sentences.id', sentenceId)
-    .then(function (data) {
-      res.status(200)
+  if(!req.params.id){
+    return res.status(400)
         .json({
-          status: 'success',
-          data: data,
-          message: 'Retrieved sentence'
-        });
-    })
-    .catch(function (err) {
+            status: 'failure',
+            message:'Sentence id required.'});
+  }
+
+  try {
+    const sentenceData = await dbHelper.getSentenceById(req.params.id)
+
+    if(sentenceData && sentenceData.length > 0) {
+      for (i in sentenceData) {
+        const sentence = sentenceData[i];
+        console.log(JSON.stringify(sentenceData))
+        if(!sentence.usercreated && !sentence.audiourl && sentence.audiostatus !== lib.Status.DOWNLOADED) {
+          let lang;
+          if(sentence.lang === 'eng-whiteenglish') {
+            lang = 'eng'
+          }
+          const uploadedData = await awsHelper.uploadAudio(sentence.id, lang);
+          if(uploadedData && uploadedData != 404) {
+            sentence.audiourl = uploadedData.Location
+            if(!sentence.audioid) {
+              const newAudio = await dbHelper.insertAudio(sentence.id, null, uploadedData.Location, lib.Status.APPROVED)
+              sentence.audioid = newAudio[0].audioid
+            } else {
+              await dbHelper.updateAudiosUrl(sentence.audioid, uploadedData.Location)
+            }
+          } else if(uploadedData === 404) {
+            if(!sentence.audioid) {
+              await dbHelper.insertAudio(sentence.id, null, null, lib.Status.DOWNLOADED)
+            } else {
+              await dbHelper.updateAudiosDownloadCheck(sentence.audioid, lib.Status.DOWNLOADED)
+            }
+          }
+        }
+      }
+    }
+    res.status(200)
+      .json({
+        status: 'success',
+        data: sentenceData,
+        message: 'Retrieved sentence'
+      });
+  } catch(err) {
       res.status(400)
         .json({
           status: 'Failure',
           data:err,
           message:'Error occurring'});
-    });
+    };
 });
 
 // Get Translations for each sentence

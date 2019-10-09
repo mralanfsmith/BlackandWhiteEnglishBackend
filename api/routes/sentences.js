@@ -33,6 +33,26 @@ sentencesRouter.get("/count/", (req, res, next) => {
     });
 });
 
+// Get Sentence Count
+sentencesRouter.get("/total-count/", (req, res, next) => { 
+  database('sentences').count('id')
+  .then(function (data) {
+      res.status(200)
+        .json({
+          status: 'success',
+          data: data,
+          message: 'Retrieved Count'
+        });
+    })
+    .catch(function (err) {
+      res.status(400)
+        .json({
+          status: 'Failure',
+          data:err,
+          message:'Error occurring'});
+    });
+});
+
 // Get Sentences for specific language
 sentencesRouter.get("/", async (req, res, next) => { 
   const limit = 1;

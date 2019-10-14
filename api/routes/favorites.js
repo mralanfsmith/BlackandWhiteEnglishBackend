@@ -33,32 +33,10 @@ favoritesRouter.post("/add", middleware.checkToken, (req, res) => {
     .first()
     .then(function (data) {
         if (data && typeof data !== "undefined") {
-            saveData.viewed = data.viewed + 1;
-            database('favorites')
-            .where('favoriteid', data.favoriteid)
-            .update(saveData)
-            .then(function (data) {
-              if (data === null || data === '' || data === 0) {
-                return res.status(200)
-                  .json({
-                      status: 'Failure',
-                      message: 'Update fail'
-                  });
-              }
-              else {
-                return res.status(200)
-                  .json({
-                    status: 'Success',
-                    data
-                });
-              }
-            })
-            .catch(function (err) {
-              res.status(400)
+            return res.status(200)
                 .json({
-                  status: 'failure',
-                  data:err,
-                  message:'Failed to update user profile.'});
+                status: 'success',
+                message: 'Already added to favorite.'
             });
         }else{
             return database('favorites')
@@ -137,9 +115,10 @@ favoritesRouter.get("/list",  middleware.checkToken, (req, res) => {
     const offset = (page - 1) * limit;
 
     return database('favorites')
-    .select(['favorites.created as created', 'userid', 'sentenceid', 'text', 'viewed'])
-    .where('userid', verifiedJwt.userId)
+    .select(['favorites.created as created', 'favorites.userid', 'favorites.sentenceid', 'sentences.text', 'history.viewed'])
+    .where('favorites.userid', verifiedJwt.userId)
     .innerJoin('sentences','favorites.sentenceid','sentences.id')
+    .leftJoin('history','favorites.sentenceid','history.sentenceid')
     .limit(limit)
     .offset(offset)
     .orderBy('favorites.created', 'desc')

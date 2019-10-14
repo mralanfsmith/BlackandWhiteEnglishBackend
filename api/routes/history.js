@@ -134,7 +134,7 @@ historyRouter.post("/add", (req, res) => {
       .where('history.userid', verifiedJwt.userId)
       .limit(limit)
       .offset(offset)
-      .orderBy('history.historyid', 'desc')
+      .orderBy('history.created', 'desc')
       .then(function (data) {
         return res.status(200)
             .json({

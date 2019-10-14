@@ -33,10 +33,32 @@ favoritesRouter.post("/add", middleware.checkToken, (req, res) => {
     .first()
     .then(function (data) {
         if (data && typeof data !== "undefined") {
-            return res.status(200)
+            saveData.viewed = data.viewed + 1;
+            database('favorites')
+            .where('favoriteid', data.favoriteid)
+            .update(saveData)
+            .then(function (data) {
+              if (data === null || data === '' || data === 0) {
+                return res.status(200)
+                  .json({
+                      status: 'Failure',
+                      message: 'Update fail'
+                  });
+              }
+              else {
+                return res.status(200)
+                  .json({
+                    status: 'Success',
+                    data
+                });
+              }
+            })
+            .catch(function (err) {
+              res.status(400)
                 .json({
-                status: 'success',
-                message: 'Already added to favorite.'
+                  status: 'failure',
+                  data:err,
+                  message:'Failed to update user profile.'});
             });
         }else{
             return database('favorites')
@@ -120,7 +142,7 @@ favoritesRouter.get("/list",  middleware.checkToken, (req, res) => {
     .innerJoin('sentences','favorites.sentenceid','sentences.id')
     .limit(limit)
     .offset(offset)
-    .orderBy('favorites.favoriteid', 'desc')
+    .orderBy('favorites.created', 'desc')
     .then(function (data) {
         res.status(200)
         .json({

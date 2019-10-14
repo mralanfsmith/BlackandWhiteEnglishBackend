@@ -106,11 +106,21 @@ favoritesRouter.post("/add", middleware.checkToken, (req, res) => {
 // Retrieve list of favorite sentences for user
 favoritesRouter.get("/list",  middleware.checkToken, (req, res) => {
     var verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
-    console.log(verifiedJwt);
+    
+    let page = req.query.pg;
+    if (!page || page < 1) page = 1;
+    let limit = req.query.limit;
+    if (!limit || limit < 1) limit = 10;
+    else if(limit > 100) limit = 100
+    const offset = (page - 1) * limit;
+
     return database('favorites')
     .select(['favorites.created as created', 'userid', 'sentenceid', 'text', 'viewed'])
     .where('userid', verifiedJwt.userId)
     .innerJoin('sentences','favorites.sentenceid','sentences.id')
+    .limit(limit)
+    .offset(offset)
+    .orderBy('favorites.favoriteid', 'desc')
     .then(function (data) {
         res.status(200)
         .json({

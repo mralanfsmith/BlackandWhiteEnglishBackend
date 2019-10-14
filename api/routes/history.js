@@ -83,25 +83,66 @@ historyRouter.post("/add", (req, res) => {
 
  });
 
+ // Get History and fav total Count
+ historyRouter.get("/count/", async (req, res, next) => { 
+  if (!req.headers.authorization) {
+    return res.status(403).json({ error: 'No credentials sent!' });
+  }
+  var verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
+  
+  try {
+    const historyCount = await database('history').where('userid', verifiedJwt.userId).count('historyid')
+    const favCount = await database('favorites').where('userid', verifiedJwt.userId).count('favoriteid')
+    const countData = {
+      historyCount : historyCount[0].count,
+      favoriteCount: favCount[0].count
+    }
+    return res.status(200)
+      .json({
+        status: 'success',
+        data: countData,
+        message: 'Retrieved Count'
+      });
+  } catch(err) {
+    return res.status(400)
+      .json({
+        status: 'Failure',
+        data:err,
+        message:'Error occurring'});
+  }
+});
+
  // list user history
  historyRouter.get("/list", (req, res) => {
     if (!req.headers.authorization) {
       return res.status(403).json({ error: 'No credentials sent!' });
     }
     var verifiedJwt = jwt.verify(req.headers.authorization, configData.user.secret);
-   
-    return database.raw(`select history.sentenceid, sentences.text, favorites.favoriteid, history.created, history.viewed, history.userid from history inner join sentences on history.sentenceid = sentences.id left join favorites on history.sentenceid = favorites.sentenceid`)
-    // .select(['history.created as created', 'userid', 'sentenceid', 'viewed', 'text'])
-    // .where('userid', verifiedJwt.userId)
-    // .innerJoin('sentences','history.sentenceid','sentences.id')
-    .then(function (data) {
-        res.status(200)
-        .json({
-            status: 'success',
-            data: data.rows
-            });
-        }).catch(function (err) {
-        res.status(400)
+    
+    let page = req.query.pg;
+    if (!page || page < 1) page = 1;
+    let limit = req.query.limit;
+    if (!limit || limit < 1) limit = 10;
+    else if(limit > 100) limit = 100
+    const offset = (page - 1) * limit;
+
+    return database
+      .select('history.historyid','history.sentenceid', 'sentences.text', 'favorites.favoriteid', 'history.created', 'history.viewed', 'history.userid')
+      .from('history')
+      .innerJoin('sentences','history.sentenceid','sentences.id')
+      .leftJoin('favorites','history.sentenceid','favorites.sentenceid')
+      .where('history.userid', verifiedJwt.userId)
+      .limit(limit)
+      .offset(offset)
+      .orderBy('history.historyid', 'desc')
+      .then(function (data) {
+        return res.status(200)
+            .json({
+              status: 'Success',
+              data
+        });
+      }).catch(function (err) {
+      return res.status(400)
         .json({
             status: 'failure',
             data:err,
